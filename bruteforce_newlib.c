@@ -90,7 +90,7 @@ int main(int argc, char *argv[]){
   MPI_Comm_rank(comm, &id);
 
   long found = 0;
-  int ready = 0;`
+  int ready = 0;
 
   long range_per_node = upper / N;
   mylower = range_per_node * id;
