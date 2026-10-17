@@ -1,0 +1,10 @@
+# Resultados generados
+*.csv
+
+# Ejecutables
+bruteforce_newlib
+bruteforce_own
+
+# Archivos temporales
+*.out
+*.o
