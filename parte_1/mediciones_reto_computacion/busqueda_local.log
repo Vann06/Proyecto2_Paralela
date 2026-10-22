@@ -1,0 +1,17 @@
+Proceso 0 -> rango [0, 1000000)
+Procesos MPI: 1
+Intentos totales: 1000000
+Tiempo busqueda: 81.445992866 segundos
+No se encontro la llave en el rango indicado.
+NOT_FOUND,1,81.445992866,1000000
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[12121,1],0]
+  Exit code:    2
+--------------------------------------------------------------------------

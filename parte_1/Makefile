@@ -9,4 +9,4 @@ bruteforce_own: bruteforce_own.c
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
 test: bruteforce_own
-	python3 tests/test_workflow.py
+	bash tests/test_workflow.sh

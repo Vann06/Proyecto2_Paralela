@@ -19,7 +19,7 @@ Si faltan dependencias en Ubuntu:
 
 ```bash
 sudo apt update
-sudo apt install build-essential openmpi-bin libopenmpi-dev libssl-dev python3
+sudo apt install build-essential openmpi-bin libopenmpi-dev libssl-dev
 ```
 
 Desde Windows, abrir Ubuntu/WSL y entrar a `/mnt/c/Projects/Proyecto2_Paralela/parte_1`.
@@ -75,29 +75,54 @@ El proyecto conserva su conversión numérica original a llave DES con paridad i
 
 `zero` no conserva ceros originales al final de un archivo binario; para textos habituales no supone pérdida. Para datos arbitrarios, acordar PKCS#7 con el otro equipo.
 
-## 3. Tiempo base, speedup y eficiencia
+## 3. Ejecutar nuestro reto recibido y guardar logs
 
-La referencia secuencial `Ts` se mide en una sola máquina con **un proceso**. Después se mide `Tp` con varios procesos usando el mismo archivo, frase, rango, padding y versión del programa.
+Los `.log` son resultados que se leen; para repetir una prueba se ejecuta el programa en C. Desde Ubuntu/WSL:
 
 ```bash
-python3 benchmark_recibido.py --input recibido_base64.txt --format base64 \
-  --target "frase exacta del otro equipo" --upper 1000000 \
-  --processes 1 2 4 --repetitions 3 --output-dir mediciones_recibido
+cd /mnt/c/Projects/Proyecto2_Paralela/parte_1
+bash ejecutar_reto.sh 4
 ```
 
-El script siempre ejecuta primero el caso de un proceso, aunque no se incluya en `--processes`. Calcula `Ts` como la media de esas repeticiones y guarda:
+El script compila con `make`, busca en `[0, 4000000)` con la frase `computación paralela y distribuida`, muestra la ejecución en pantalla y guarda `ejecucion.log` y `texto_recuperado.txt` en una carpeta nueva bajo `ejecuciones/`. Este rango incluye la llave encontrada en el reto recibido. El script no recibe ni inserta esa llave en la búsqueda.
 
-- `resultados.csv`: parámetros del reto, procesos, repetición, llave encontrada, tiempo, intentos, Ts medio, speedup y eficiencia.
-- Un `.log` completo por ejecución y su archivo de texto recuperado.
-- En consola, el tiempo medio y el speedup calculado sobre medias para cada cantidad de procesos.
+Para medir la referencia de un proceso:
 
-Cada fila usa `speedup = Ts_medio / tiempo_de_la_fila` y `eficiencia_pct = 100 * speedup / procesos`. Por variación entre repeticiones, las filas individuales de un proceso pueden diferir de 1; el speedup sobre medias para un proceso es 1. El script se detiene si falla una búsqueda, cambia la llave o cambia el texto recuperado. La carpeta de salida debe ser nueva para conservar experimentos anteriores.
+```bash
+bash ejecutar_reto.sh 1
+```
 
-Para un clúster se puede agregar `--hostfile hosts.txt`; se aplica solo a las pruebas con más de un proceso, manteniendo Ts local. Las rutas absolutas del ejecutable, entrada y carpeta de resultados deben estar disponibles en los nodos (por ejemplo, en un directorio compartido), con la misma compilación y entorno MPI. Elegir cantidades de procesos compatibles con los slots disponibles.
+La prueba de un proceso recorre más candidatos y puede tardar varios minutos. También puede darse un nombre a la carpeta de resultados:
 
-El tiempo registrado comienza después de distribuir el archivo y sincronizar los procesos. Incluye descifrar candidatos, buscar la frase y comprobar colectivamente la terminación; excluye la lectura, conversión, cifrado inicial y escritura del resultado. Se informa el máximo tiempo de los procesos.
+```bash
+bash ejecutar_reto.sh 4 ejecuciones/prueba_4procesos
+cat ejecuciones/prueba_4procesos/ejecucion.log
+cat ejecuciones/prueba_4procesos/texto_recuperado.txt
+```
 
-La búsqueda distribuye rangos contiguos equilibrados y verifica la terminación cada 1024 candidatos. Usa colectivas MPI para evitar bloqueos por avisos simultáneos. Las ejecuciones nuevas deben compararse entre sí: el mecanismo de terminación cambió respecto de la versión anterior. Al detenerse cuando aparece una coincidencia, el trabajo realizado puede variar con el reparto; interpretar el speedup junto con los intentos y las repeticiones.
+La carpeta final debe ser nueva para no reemplazar una ejecución anterior. Los logs ya existentes siguen en `mediciones_reto_computacion/`.
+
+## Tiempo base, speedup y eficiencia
+
+La referencia secuencial `Ts` se mide en una sola máquina con **un proceso**. Después se mide `Tp` con varios procesos usando el mismo archivo, frase, rango, padding y versión del programa. Todo se ejecuta con C, Bash y awk, sin Python:
+
+```bash
+bash benchmark_recibido.sh --input recibido_base64.txt --format base64 \
+  --target "computación paralela y distribuida" --upper 4000000 \
+  --processes "1 2 4" --repetitions 3 --output-dir ejecuciones/mediciones_reto
+```
+
+El script siempre mide primero un proceso. Guarda `parametros.txt`, un `.log` y el texto recuperado de cada ejecución, `resultados.csv` con cada repetición y `resumen.csv` con medias por cantidad de procesos. No necesita conocer la llave.
+
+Usa `speedup = Ts_medio / Tp` y `eficiencia_pct = 100 * speedup / procesos`. En `resultados.csv`, Tp es el tiempo individual; en `resumen.csv`, es el tiempo medio. El speedup sobre medias con un proceso es 1. Si falla una búsqueda o cambia el texto recuperado, la medición se detiene sin presentar esa ejecución como exitosa. La carpeta final debe ser nueva.
+
+Para otro reto, cambiar `--input`, `--format`, `--target` y `--upper`. Se admite `--padding zero|pkcs7|none`. El ejecutable por defecto es `./bruteforce_own`; compilar primero con `make`.
+
+Para un clúster se puede agregar `--hostfile hosts.txt`, que se aplica solo a las pruebas con más de un proceso. El ejecutable, la entrada y la carpeta de salida deben estar disponibles en las mismas rutas en los nodos. Elegir cantidades de procesos compatibles con los slots disponibles.
+
+El tiempo registrado comienza después de distribuir el archivo y sincronizar los procesos. Incluye descifrar candidatos, buscar la frase y comprobar colectivamente la terminación; excluye lectura, conversión y escritura del resultado. Se informa el máximo tiempo de los procesos.
+
+La búsqueda reparte rangos contiguos equilibrados y verifica la terminación cada 1024 candidatos. Al detenerse al encontrar la llave, el trabajo realizado depende del reparto. Interpretar el speedup junto con los intentos y las repeticiones; comparar ejecuciones de esta misma versión. Los 81 segundos de la búsqueda anterior sin coincidencia en `[0, 1000000)` no son el Ts de recuperación de este reto.
 
 ## 4. Demostración y benchmark original
 
@@ -121,7 +146,7 @@ La demostración cifra, guarda `texto_cifrado.txt`, busca la llave y guarda `tex
 bash benchmark.sh
 ```
 
-`benchmark.sh` sigue midiendo retos propios. Para el reto ajeno usar `benchmark_recibido.py`. El registro de demostración contiene llaves y texto plano; no publicarlo como archivo cifrado.
+`benchmark.sh` sigue midiendo retos propios. Para el reto ajeno usar `benchmark_recibido.sh`. El registro de demostración contiene llaves y texto plano; no publicarlo como archivo cifrado.
 
 Códigos de salida: `0` éxito, `1` argumentos/archivo/cifrado inválidos o fallo de escritura, `2` búsqueda terminada sin coincidencias. Sin coincidencias se emite `NOT_FOUND,procesos,segundos,intentos`, sin una fila `RESULT` de éxito ni un texto nuevo recuperado. Un archivo recuperado de una ejecución previa no se elimina automáticamente.
 
@@ -132,10 +157,10 @@ Códigos de salida: `0` éxito, `1` argumentos/archivo/cifrado inválidos o fall
 ```bash
 make test
 # O, despues de compilar:
-python3 tests/test_workflow.py
+bash tests/test_workflow.sh
 ```
 
-Las pruebas ejecutan MPI real con 1 y 4 procesos: recuperación en los tres formatos y paddings, ciphertext externo producido por OpenSSL, compatibilidad con el cifrado ya publicado, demostración antigua, rangos vacíos, varias rondas de búsqueda, llave cero, ausencia de coincidencia y rechazo de entradas inválidas. Trabajan en carpetas temporales y no reemplazan el reto publicado.
+Las pruebas Bash ejecutan MPI real con 1 y 4 procesos, recuperan un texto de prueba en hexadecimal, Base64 y binario, y comprueban la generación de CSV y logs del benchmark. Trabajan en una carpeta temporal cuya ruta se muestra al terminar; no reemplazan el reto publicado.
 
 Para ver la ayuda:
 
