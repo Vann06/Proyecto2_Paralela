@@ -8,3 +8,8 @@ bruteforce_own
 # Archivos temporales
 *.out
 *.o
+
+# Recuperaciones privadas y mediciones de retos recibidos
+texto_recuperado.txt
+mediciones_recibido/
+__pycache__/
