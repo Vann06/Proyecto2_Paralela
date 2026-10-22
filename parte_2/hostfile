@@ -1,0 +1,4 @@
+# IPs de cada computadora en la red del router (ver con: ip a)
+192.168.1.10 slots=1
+192.168.1.11 slots=1
+192.168.1.12 slots=1

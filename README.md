@@ -2,6 +2,11 @@
 
 El programa permite publicar nuestro reto, resolver un cifrado recibido o ejecutar la demostración original. Usa C11, OpenMPI y OpenSSL 3 (proveedores `legacy` y `default`).
 
+## Estructura
+
+- `parte_1/`: código, pruebas y benchmarks. Todos los comandos de las secciones 1 a 4 se ejecutan desde esta carpeta (`cd parte_1`).
+- `parte_2/`: `Dockerfile` y `hostfile` para el clúster MPI entre varias computadoras (ver sección 5).
+
 ## Compilar en Linux o Ubuntu/WSL
 
 ```bash
@@ -17,7 +22,7 @@ sudo apt update
 sudo apt install build-essential openmpi-bin libopenmpi-dev libssl-dev python3
 ```
 
-Desde Windows, abrir Ubuntu/WSL y entrar a `/mnt/c/Projects/Proyecto2_Paralela`.
+Desde Windows, abrir Ubuntu/WSL y entrar a `/mnt/c/Projects/Proyecto2_Paralela/parte_1`.
 
 ## 1. Publicar nuestro reto
 
@@ -136,4 +141,26 @@ Para ver la ayuda:
 
 ```bash
 ./bruteforce_own --help
+```
+
+## 5. Clúster con Docker
+
+Construir la imagen desde la raíz del repositorio (copia y compila `parte_1/` dentro de la imagen):
+
+```bash
+docker build -t mpi-cluster-image -f parte_2/Dockerfile .
+```
+
+En cada computadora conectada al mismo router:
+
+```bash
+docker run -it --network host --name mpi_node mpi-cluster-image /bin/bash
+service ssh start
+```
+
+El SSH del contenedor escucha en el puerto `2222` para no chocar con el SSH del host. La llave pública de quien ejecuta `mpirun` debe estar en `~/.ssh/authorized_keys` de todos los contenedores. Con las IPs reales en `parte_2/hostfile` (la del master primero):
+
+```bash
+mpirun --hostfile hostfile -np 3 hostname
+mpirun --hostfile hostfile -np 3 ./bruteforce_own 999999 1000000 texto.txt
 ```

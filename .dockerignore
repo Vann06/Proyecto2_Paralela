@@ -1,0 +1,9 @@
+.git
+**/*.csv
+**/*.o
+**/*.out
+parte_1/bruteforce_own
+parte_1/bruteforce_newlib
+**/__pycache__
+**/mediciones_recibido
+**/texto_recuperado.txt
