@@ -158,7 +158,7 @@ docker run -it --network host --name mpi_node mpi-cluster-image /bin/bash
 service ssh start
 ```
 
-El SSH del contenedor escucha en el puerto `2222` para no chocar con el SSH del host. La llave pública de quien ejecuta `mpirun` debe estar en `~/.ssh/authorized_keys` de todos los contenedores. Con las IPs reales en `parte_2/hostfile` (la del master primero):
+El SSH del contenedor escucha en el puerto `2222` para no chocar con el SSH del host. La llave pública de quien ejecuta `mpirun` debe estar en `~/.ssh/authorized_keys` de todos los contenedores. El `hostfile` viene en `/app/hostfile` dentro del contenedor: en el master, cambiar las IPs de ejemplo por las reales (`nano hostfile`), poniendo primero la del master:
 
 ```bash
 mpirun --hostfile hostfile -np 3 hostname

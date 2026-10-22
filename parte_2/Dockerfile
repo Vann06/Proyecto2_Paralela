@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libssl-dev \
         iproute2 \
         iputils-ping \
+        nano \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. SSH sin intervención
@@ -36,6 +37,7 @@ ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
 # 4. Código dentro de la imagen (sin volúmenes): mismo binario y misma ruta en todos los nodos
 WORKDIR /app
 COPY parte_1/ ./
+COPY parte_2/hostfile ./
 RUN make \
     && mpicc -O2 -o bruteforce_newlib bruteforce_newlib.c -lcrypto
 
