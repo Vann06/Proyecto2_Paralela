@@ -334,6 +334,22 @@ static int tryKey(Crypto *c, unsigned long long key, const Buffer *cipher,
     return len >= 0 && contains(scratch, len, o->target);
 }
 
+/* Optional per-node progress log (mpirun -x BRUTEFORCE_LOG=path). Remote ranks'
+ * stdout only reaches mpirun, so each node follows its own file with tail -f.
+ */
+static FILE *open_progress_log(int rank, unsigned long long first, unsigned long long end)
+{
+    const char *path = getenv("BRUTEFORCE_LOG");
+    FILE *log = path && *path ? fopen(path, "a") : NULL;
+    if(!log) return NULL;
+    char host[MPI_MAX_PROCESSOR_NAME];
+    int host_len;
+    MPI_Get_processor_name(host, &host_len);
+    setvbuf(log, NULL, _IOLBF, 0);
+    fprintf(log, "\n[%s] Proceso %d: buscando llaves en [%llu, %llu)\n", host, rank, first, end);
+    return log;
+}
+
 static SearchResult search_mpi(Crypto *c, const Options *o, Buffer *cipher,
                                int rank, int processes, MPI_Comm comm)
 {
@@ -348,8 +364,9 @@ static SearchResult search_mpi(Crypto *c, const Options *o, Buffer *cipher,
     unsigned long long found = ULLONG_MAX, local = ULLONG_MAX;
     unsigned long long rounds = (q + (r != 0) + SEARCH_BATCH - 1) / SEARCH_BATCH;
     printf("Proceso %d -> rango [%llu, %llu)\n", rank, first, end);
+    FILE *log = open_progress_log(rank, first, end);
     MPI_Barrier(comm);
-    double start = MPI_Wtime();
+    double start = MPI_Wtime(), last_report = start;
     /* All ranks enter every round, including ranks with an empty range.
      * One collective replaces unmatched stop messages and blocking sends.
      */
@@ -362,8 +379,23 @@ static SearchResult search_mpi(Crypto *c, const Options *o, Buffer *cipher,
         }
         MPI_Allreduce(&local, &found, 1, MPI_UNSIGNED_LONG_LONG, MPI_MIN, comm);
         if(found != ULLONG_MAX) break;
+        if(log && count && MPI_Wtime() - last_report >= 1.0) {
+            last_report = MPI_Wtime();
+            fprintf(log, "  Proceso %d: %llu/%llu llaves probadas (%.1f%%), ultima %llu\n",
+                    rank, attempts, count, 100.0 * (double)attempts / (double)count, next - 1);
+        }
     }
     double elapsed = MPI_Wtime() - start;
+    if(log) {
+        if(local != ULLONG_MAX)
+            fprintf(log, "  Proceso %d: LLAVE ENCONTRADA: %llu\n", rank, local);
+        else if(found != ULLONG_MAX)
+            fprintf(log, "  Proceso %d: otro proceso encontro la llave %llu, me detengo\n", rank, found);
+        else
+            fprintf(log, "  Proceso %d: la llave no esta en mi rango\n", rank);
+        fprintf(log, "  Proceso %d: %llu intentos en %.3f segundos\n", rank, attempts, elapsed);
+        fclose(log);
+    }
     SearchResult result = {found, 0, 0.0};
     MPI_Reduce(&elapsed, &result.seconds, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
     MPI_Reduce(&attempts, &result.attempts, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, comm);

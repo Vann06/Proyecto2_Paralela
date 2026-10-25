@@ -29,10 +29,16 @@ RUN mkdir -p /var/run/sshd /root/.ssh && chmod 700 /root/.ssh \
 ENV OMPI_ALLOW_RUN_AS_ROOT=1
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 
-# Que MPI no intente comunicarse por loopback ni por la red interna de Docker
-ENV OMPI_MCA_btl_tcp_if_exclude=lo,docker0
-ENV OMPI_MCA_oob_tcp_if_exclude=lo,docker0
+# hwloc intenta abrir las pantallas X11 (:0, :1, ...) al arrancar; en WSL esas
+# conexiones se quedan colgadas y orted nunca termina de iniciar
+ENV HWLOC_COMPONENTS=-gl
 ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
+
+# mpirun lanza orted en los otros nodos por SSH, y esas sesiones no heredan los ENV
+# de Docker: se repiten en /etc/environment (lo lee PAM al iniciar sesión SSH) y en
+# el archivo de parámetros de OpenMPI
+RUN echo "HWLOC_COMPONENTS=-gl" >> /etc/environment \
+    && printf '\nbtl_vader_single_copy_mechanism = none\n' >> /etc/openmpi/openmpi-mca-params.conf
 
 # 4. Código dentro de la imagen (sin volúmenes): mismo binario y misma ruta en todos los nodos
 WORKDIR /app

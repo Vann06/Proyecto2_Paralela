@@ -189,3 +189,12 @@ El SSH del contenedor escucha en el puerto `2222` para no chocar con el SSH del 
 mpirun --hostfile hostfile -np 3 hostname
 mpirun --hostfile hostfile -np 3 ./bruteforce_own 999999 1000000 texto.txt
 ```
+
+Si `mpirun` se queda colgado, limitar MPI a la subred del router (por ejemplo `192.168.1.0/24`), para que no use interfaces de Docker o de VPN:
+
+```bash
+mpirun --mca btl_tcp_if_include 192.168.1.0/24 --mca oob_tcp_if_include 192.168.1.0/24 \
+       --hostfile hostfile -np 3 ./bruteforce_own 999999 1000000 texto.txt
+```
+
+En Windows la red host de Docker Desktop no sirve para MPI: el contenedor solo ve IPs internas (`192.168.65.x`) y los procesos no pueden responderse. Usar Docker Engine dentro de WSL2 con `networkingMode=mirrored` en `%USERPROFILE%\.wslconfig`.
