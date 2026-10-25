@@ -197,4 +197,11 @@ mpirun --mca btl_tcp_if_include 192.168.1.0/24 --mca oob_tcp_if_include 192.168.
        --hostfile hostfile -np 3 ./bruteforce_own 999999 1000000 texto.txt
 ```
 
+La salida de todos los procesos aparece solo en la terminal del master. Para que cada computadora vea su propio progreso, pasar `-x BRUTEFORCE_LOG=/tmp/bruteforce.log` a `mpirun`; cada proceso escribe en ese archivo de su máquina su rango, el avance cada segundo y si encontró la llave. En cada contenedor, antes de ejecutar:
+
+```bash
+touch /tmp/bruteforce.log
+tail -f /tmp/bruteforce.log
+```
+
 En Windows la red host de Docker Desktop no sirve para MPI: el contenedor solo ve IPs internas (`192.168.65.x`) y los procesos no pueden responderse. Usar Docker Engine dentro de WSL2 con `networkingMode=mirrored` en `%USERPROFILE%\.wslconfig`.
