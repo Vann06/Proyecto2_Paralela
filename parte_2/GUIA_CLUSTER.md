@@ -58,20 +58,67 @@ cd Proyecto2_Paralela
 > final sobre reconstruir la imagen.
 
 ### 1.2 Construir la imagen
-Desde la **raíz** del repositorio:
-```bash
-docker build -t mpi-cluster-image -f parte_2/Dockerfile .
-```
+
+**¿Primera vez en esta máquina, o ya tenías la imagen construida y no cambió el código?**
+
+- **Primera vez (o hiciste `git pull` con cambios en `parte_1/`, `hostfile` o
+  el `Dockerfile`):** construir/reconstruir la imagen. Desde la **raíz** del
+  repositorio:
+  ```bash
+  docker build -t mpi-cluster-image -f parte_2/Dockerfile .
+  ```
+  Si la imagen `mpi-cluster-image` ya existía, este comando simplemente la
+  **reemplaza** con la versión nueva (no necesitas borrarla a mano).
+
+- **Ya la tenías construida y no cambió el código:** puedes saltarte este
+  paso por completo y pasar directo al 1.3.
+
+> Para ver qué imágenes tienes: `docker images`
 
 ### 1.3 Levantar el contenedor y arrancar SSH
+
+**¿Primera vez, o ya existe un contenedor `mpi_node` en esta máquina?**
+
+Revisa primero qué tienes:
 ```bash
-docker run -it --network host --name mpi_node mpi-cluster-image /bin/bash
-service ssh start
+docker ps -a
 ```
-> Déjalo abierto (no cierres esta terminal). El `sshd` del contenedor
-> escucha en el puerto **2222**.
-> Si sale *"name already in use"*, borra el viejo con `docker rm -f mpi_node`
-> y repite este paso.
+
+- **No existe ningún contenedor `mpi_node` todavía:** créalo:
+  ```bash
+  docker run -it --network host --name mpi_node mpi-cluster-image /bin/bash
+  service ssh start
+  ```
+
+- **Ya existe `mpi_node` y solo quieres volver a entrar (sin perder la
+  llave SSH, el `hostfile` editado, etc. que ya tenías dentro):** reusa el
+  mismo contenedor en vez de crear uno nuevo:
+  ```bash
+  docker start -ai mpi_node
+  ```
+  (si no te da una shell interactiva, usa en su lugar
+  `docker start mpi_node` seguido de `docker exec -it mpi_node /bin/bash`)
+
+  Luego, dentro, vuelve a arrancar SSH (esto **no** se conserva al
+  reiniciar el contenedor):
+  ```bash
+  service ssh start
+  ```
+
+- **Ya existe `mpi_node` pero reconstruiste la imagen en el paso 1.2**
+  (porque hubo cambios de código): el contenedor viejo sigue corriendo el
+  código antiguo, así que hay que reemplazarlo:
+  ```bash
+  docker rm -f mpi_node
+  docker run -it --network host --name mpi_node mpi-cluster-image /bin/bash
+  service ssh start
+  ```
+  > Esto sí borra la llave SSH y el `hostfile` editado de ese contenedor:
+  > tendrás que repetir la Fase 3 (llaves) y la Fase 5 (hostfile) en esta
+  > máquina.
+
+> En cualquier caso: déjalo abierto (no cierres esta terminal). El `sshd`
+> del contenedor escucha en el puerto **2222**.
 
 En este punto **todas** las máquinas (HOST y trabajadores) deben tener su
 contenedor corriendo con `service ssh start` ya ejecutado.
@@ -194,19 +241,6 @@ del HOST**. El progreso de cada máquina individual se ve en su propio
 - **Windows:** la red `host` de Docker Desktop **no sirve** para MPI (el
   contenedor solo ve IPs internas `192.168.65.x`). Usa Docker Engine dentro
   de WSL2 con `networkingMode=mirrored` en `%USERPROFILE%\.wslconfig`.
-- **Si reinicias el contenedor** (no lo borras): la llave SSH se conserva,
-  pero hay que repetir `service ssh start` (FASE 1.3) en esa máquina.
-  - Reusar el contenedor existente: `docker start -ai mpi_node`
-    (o `docker start mpi_node` + `docker exec -it mpi_node /bin/bash`).
-- **Si hiciste `git pull` con cambios de código** (afecta `parte_1/`,
-  `hostfile` o el `Dockerfile`): el contenedor viejo sigue con el código
-  viejo, porque el código se copia dentro de la imagen en build time. Hay
-  que reconstruir la imagen y crear un contenedor nuevo en **esa** máquina
-  → se repite desde la FASE 1.2, y la llave SSH desde la FASE 3 (un
-  contenedor nuevo no conserva la capa de escritura del viejo):
-  ```bash
-  docker build -t mpi-cluster-image -f parte_2/Dockerfile .
-  docker rm -f mpi_node
-  docker run -it --network host --name mpi_node mpi-cluster-image /bin/bash
-  service ssh start
-  ```
+- Para los casos de "ya tenía la imagen/el contenedor creado, ¿qué hago?",
+  ver las ramas explicadas en la **FASE 1.2 y 1.3** (reusar contenedor,
+  reconstruir imagen, reemplazar contenedor).
