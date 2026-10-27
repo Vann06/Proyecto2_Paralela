@@ -44,7 +44,9 @@ RUN echo "HWLOC_COMPONENTS=-gl" >> /etc/environment \
 WORKDIR /app
 COPY parte_1/ ./
 COPY parte_2/hostfile ./
+COPY parte_2/mpirun_lan.sh ./
 RUN make \
-    && mpicc -O2 -o bruteforce_newlib bruteforce_newlib.c -lcrypto
+    && mpicc -O2 -o bruteforce_newlib bruteforce_newlib.c -lcrypto \
+    && chmod +x mpirun_lan.sh
 
 CMD ["/bin/bash"]
